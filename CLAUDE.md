@@ -18,7 +18,8 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
 - `com.jak.airdrop-keep.plist` — the agent template (`__SCRIPT__/__DOWNLOADS__/__STATE__` filled at enable).
 
 ## Conventions
-- Part of `~/claude-server` — see root map in `../CLAUDE.md`. Git → private `jaklabs/airdrop-keep`
-  (candidate to go **public** as a dev-tip / Apple-Feedback proof-of-concept).
+- Part of `~/claude-server` — see root map in `../CLAUDE.md`. Git → **PUBLIC** `jaklabs/airdrop-keep`
+  (open-sourced 2026-08-28 as a dev-tip / Apple-Feedback proof-of-concept + FDE-portfolio piece).
+  Keep it secret-free — it's public.
 - Stdlib/bash only, no deps. Never moves or deletes user files — links only.
 - Commit trailer: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
