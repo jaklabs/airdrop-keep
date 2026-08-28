@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jak.airdrop-keep</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__SCRIPT__</string>
+    </array>
+    <!-- Fire whenever ~/Downloads changes (a new AirDrop lands). The script is idempotent. -->
+    <key>WatchPaths</key>
+    <array>
+        <string>__DOWNLOADS__</string>
+    </array>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>StandardOutPath</key>
+    <string>__STATE__/airdrop-keep.log</string>
+    <key>StandardErrorPath</key>
+    <string>__STATE__/airdrop-keep.log</string>
+</dict>
+</plist>
