@@ -18,7 +18,7 @@ NAME="AirDrop"
 SERVICES="$HOME/Library/Services"
 BUNDLE="$SERVICES/$NAME.workflow"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HELPER_SRC="$HERE/airdrop-send.js"
+HELPER_SRC="$HERE/AirDropSend.swift"
 
 if [ "${1:-}" = "--uninstall" ]; then
     rm -rf "$BUNDLE"
@@ -39,12 +39,37 @@ return (current application'"'"'s NSSharingService'"'"'s sharingServiceNamed:"co
 fi
 # Parse-check before installing: a Quick Action that silently does nothing is
 # worse than one that was never added.
-/usr/bin/osascript -l JavaScript -e "$(printf 'ObjC.import("Foundation"); "ok"')" >/dev/null 2>&1 || {
-    echo "FAILED — JavaScript for Automation is unavailable on this Mac."; exit 1; }
+command -v /usr/bin/swiftc >/dev/null 2>&1 || {
+    echo "FAILED — swiftc not found. Install the Xcode command line tools:"
+    echo "         xcode-select --install"; exit 1; }
 
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/Resources" || exit 1
-cp "$HELPER_SRC" "$BUNDLE/Contents/Resources/airdrop-send.js"
+# Compile the sender. It MUST be a real app: NSSharingService's picker is an
+# AppKit window that needs a process running a genuine NSApplication event loop
+# to receive the click. osascript draws the picker but never dispatches a mouse
+# event to it, so clicking a recipient produced no delegate callback at all, the
+# window went half-transparent instead of closing, and nothing was sent.
+APPDIR="$BUNDLE/Contents/Resources/AirDropSend.app"
+mkdir -p "$APPDIR/Contents/MacOS"
+/usr/bin/swiftc -O -o "$APPDIR/Contents/MacOS/AirDropSend" "$HERE/AirDropSend.swift" 2>/dev/null || {
+    echo "FAILED — could not compile AirDropSend.swift."
+    echo "         Install the Xcode command line tools:  xcode-select --install"
+    rm -rf "$BUNDLE"; exit 1; }
+cat > "$APPDIR/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>AirDropSend</string>
+<key>CFBundleIdentifier</key><string>com.jak.airdrop-keep.send</string>
+<key>CFBundleName</key><string>AirDropSend</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>1.0</string>
+<key>LSUIElement</key><true/>
+<key>NSHighResolutionCapable</key><true/>
+</dict></plist>
+PLIST
+/usr/bin/codesign --force --sign - "$APPDIR" 2>/dev/null
 
 # NSSendFileTypes public.item = every file AND folder, so the item is present on
 # anything you can right-click in Finder.
@@ -80,18 +105,13 @@ PLIST
 # this very shell's argv contains the string "airdrop-send.applescript", so it
 # would kill itself before ever reaching osascript.
 read -r -d '' CMD <<'SH'
-HELPER="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/airdrop-send.js"
-PIDFILE="$HOME/Library/Caches/com.jak.airdrop-quickaction.pid"
+APP="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/AirDropSend.app"
 [ $# -eq 0 ] && exit 0
-# One picker at a time. Kill by RECORDED PID, not by pattern: this wrapper's own
-# command line contains "airdrop-send.js", so `pkill -f` on that would
-# kill the wrapper before it ever reached osascript.
-[ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
-/usr/bin/osascript -l JavaScript "$HELPER" "$@" &
-child=$!
-echo "$child" > "$PIDFILE"
-wait "$child"
-rm -f "$PIDFILE"
+# One picker at a time. pkill -x matches the process NAME (AirDropSend), which
+# this wrapper shell is not -- so it cannot kill itself the way a `pkill -f` on
+# the script path would.
+/usr/bin/pkill -x AirDropSend 2>/dev/null
+exec /usr/bin/open -a "$APP" --args "$@"
 SH
 
 CMD="$CMD" python3 - "$BUNDLE/Contents/document.wflow" <<'PY'
@@ -154,7 +174,7 @@ PY
 fail=""
 [ -f "$BUNDLE/Contents/Info.plist" ] || fail="$fail Info.plist"
 [ -f "$BUNDLE/Contents/document.wflow" ] || fail="$fail document.wflow"
-[ -f "$BUNDLE/Contents/Resources/airdrop-send.js" ] || fail="$fail helper"
+[ -x "$BUNDLE/Contents/Resources/AirDropSend.app/Contents/MacOS/AirDropSend" ] || fail="$fail AirDropSend.app"
 plutil -lint "$BUNDLE/Contents/Info.plist" >/dev/null 2>&1 || fail="$fail Info.plist(invalid)"
 plutil -lint "$BUNDLE/Contents/document.wflow" >/dev/null 2>&1 || fail="$fail document.wflow(invalid)"
 if [ -n "$fail" ]; then

@@ -50,29 +50,27 @@ and it turns sending into one keystroke.
 
 Run the installer on each Mac you want it on — it compiles nothing and has no dependencies.
 
-**How it works.** A small Automator `.workflow` in `~/Library/Services/` passes the selected paths
-to `airdrop-send.js` (run under `osascript -l JavaScript`), which asks `NSSharingService` for `com.apple.share.AirDrop.send` and
-then pumps the run loop, because the picker belongs to the calling process and dies with it.
+**How it works.** A small Automator `.workflow` in `~/Library/Services/` hands the selected paths
+to `AirDropSend.app`, a tiny compiled Swift app that asks `NSSharingService` for the AirDrop picker
+and stays running until the transfer completes. The installer compiles it with `swiftc`, so the
+**Xcode command line tools** are required (`xcode-select --install`) — the only thing in this repo
+that is not pure bash.
 
-> ⚠️ **Three "improvements" break it, and each one looks right.** On macOS 26.5.1, the picker fails
-> to appear at all if you (1) call `setActivationPolicy:` / `activateIgnoringOtherApps:` to make it
-> a proper foreground app, or (2) compile the script into an `.app` — droplet or stay-open applet
-> alike: `on open` runs, `performWithItems:` returns, and no picker is ever drawn. Plain `osascript`
-> with no activation is the one shape that works.
+> ⚠️ **Why a compiled app and not a script.** The picker is a real AppKit window, and it needs a
+> process running a genuine `NSApplication` event loop to receive the click. `osascript` pumps a run
+> loop but never dispatches events, so the picker *draws* — the window server does that regardless —
+> while no mouse event ever reaches it. The symptom is precise and misleading: the picker opens, you
+> click a person, the window goes **half-transparent instead of closing**, no delegate callback
+> fires at all, and nothing is sent. Two scripted versions shipped with exactly that bug.
 >
-> And (3) **do not add a completion delegate.** `sharingService:didShareItems:` fires when you
-> *pick a recipient*, not when the file lands — so exiting there kills the process mid-handoff. The
-> symptom is precise and misleading: the picker opens, you click a person, the window closes, and
-> nothing is sent. The script instead simply outlives the transfer (900s, idle and invisible), and
-> each new invocation kills the previous helper by recorded PID.
+> ⚠️ Related: AppleScript **cannot** implement `sharingService:didFailToShareItems:error:`, because
+> `error` is a reserved word that may not be a handler label. That is the only callback that reports
+> why a send failed, so a scripted version is structurally blind to its own failures. Every run now
+> logs to `~/Library/Caches/airdrop-send.log`.
 >
-> The PID is recorded rather than matched because the wrapper shell's own command line contains the
-> string `airdrop-send.js` — `pkill -f` on that pattern kills the wrapper before it ever reaches
-> `osascript`.
->
-> **Troubleshooting:** every run appends to `~/Library/Caches/airdrop-send.log`, including the
-> failure reason from `sharingService:didFailToShareItems:error:`. That callback is why the helper
-> is JavaScript and not AppleScript, which cannot implement it.
+> ⚠️ First send from `~/Desktop`, `~/Documents` or `~/Downloads` raises a one-time macOS permission
+> prompt, because the app is launched by LaunchServices with no inherited file access. Allow it once
+> per folder. Until then `canPerform` is `false` and nothing will send.
 
 ## Tunables (env vars)
 - `AIRDROP_BATCH_GAP` — seconds between files that still count as one batch (default `120`).
