@@ -14,12 +14,20 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
 ## Files
 - `airdrop-send.applescript` — the SEND side (added 2026-09-16): opens the AirDrop picker
   preloaded with the given paths, via `NSSharingService` `com.apple.share.AirDrop.send`.
-  ⚠️ Three AppleScript reserved words bite here and cost several compile cycles: `error` cannot be
-  a handler label (so the cancel delegate is impossible), `items` cannot be a formal parameter, and
-  `if X then A else B` needs block form. Keep `osacompile -o /dev/null` in the installer — it
-  refuses to install an action that does not compile.
-  ⚠️ It pumps `NSRunLoop` rather than calling `delay`: the AirDrop panel belongs to this process and
-  dies with it, and delegate callbacks only fire while the loop runs.
+  ⚠️⚠️ **Three changes each stop the picker appearing, and all three look like fixes.** Verified by
+  screenshot both ways on macOS 26.5.1: (1) `setActivationPolicy:`/`activateIgnoringOtherApps:`,
+  (2) compiling it into an `.app` — droplet OR stay-open applet; `on open` runs and
+  `performWithItems:` returns, but nothing is drawn, and (3) a completion delegate.
+  **Plain `osascript`, no activation, pumped `NSRunLoop`, no delegate — that exact shape.**
+  ⚠️ The delegate one shipped and was the reported bug: `sharingService:didShareItems:` fires when
+  the user **picks a recipient**, not when the file lands, so exiting there killed the process
+  mid-handoff — picker opens, click closes it, nothing sent. There is no delegate now; it just
+  outlives the transfer (900s) and the wrapper kills the previous helper by recorded PID.
+  ⚠️ It pumps `NSRunLoop` rather than calling `delay`: the picker belongs to this process and dies
+  with it, and `delay` does not reliably run the loop.
+  ⚠️ AppleScript reserved words cost several compile cycles: `error` cannot be a handler label,
+  `items` cannot be a formal parameter, `if X then A else B` needs block form. `osacompile -o
+  /dev/null` stays in the installer so a non-compiling helper is never installed.
 - `install-quick-action.sh` — builds + installs the Finder Quick Action to `~/Library/Services/`.
   Run it per machine. `--uninstall` removes it. Verifies the bundle after writing it and deletes a
   malformed one rather than leaving a menu item that silently does nothing.

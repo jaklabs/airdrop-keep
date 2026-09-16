@@ -80,8 +80,11 @@ PLIST
 read -r -d '' CMD <<'SH'
 HELPER="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/airdrop-send.applescript"
 PIDFILE="$HOME/Library/Caches/com.jak.airdrop-quickaction.pid"
-[ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
 [ $# -eq 0 ] && exit 0
+# One picker at a time. Kill by RECORDED PID, not by pattern: this wrapper's own
+# command line contains "airdrop-send.applescript", so `pkill -f` on that would
+# kill the wrapper before it ever reached osascript.
+[ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
 /usr/bin/osascript "$HELPER" "$@" &
 child=$!
 echo "$child" > "$PIDFILE"

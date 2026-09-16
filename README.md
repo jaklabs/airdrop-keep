@@ -51,17 +51,24 @@ and it turns sending into one keystroke.
 Run the installer on each Mac you want it on — it compiles nothing and has no dependencies.
 
 **How it works.** A small Automator `.workflow` in `~/Library/Services/` passes the selected paths
-to `airdrop-send.applescript`, which asks `NSSharingService` for `com.apple.share.AirDrop.send`.
-The panel belongs to the calling process and dies with it, so the script pumps the run loop to hold
-it open and exits the moment the share completes.
+to `airdrop-send.applescript`, which asks `NSSharingService` for `com.apple.share.AirDrop.send` and
+then pumps the run loop, because the picker belongs to the calling process and dies with it.
 
-> ⚠️ **A cancelled share cannot call back.** The delegate selector is
-> `sharingService:didFailToShareItems:error:`, and `error` is a reserved word in AppleScript that
-> cannot appear as a handler label — so cancellation is invisible to the script. It falls back to a
-> 150-second timeout (idle and invisible), and each new invocation kills the previous helper via a
-> pidfile, so at most one is ever waiting. The pidfile is not paranoia: the wrapper shell's own
-> command line contains the string `airdrop-send.applescript`, so a `pkill -f` on that pattern
-> would kill the wrapper before it ever reached `osascript`.
+> ⚠️ **Three "improvements" break it, and each one looks right.** On macOS 26.5.1, the picker fails
+> to appear at all if you (1) call `setActivationPolicy:` / `activateIgnoringOtherApps:` to make it
+> a proper foreground app, or (2) compile the script into an `.app` — droplet or stay-open applet
+> alike: `on open` runs, `performWithItems:` returns, and no picker is ever drawn. Plain `osascript`
+> with no activation is the one shape that works.
+>
+> And (3) **do not add a completion delegate.** `sharingService:didShareItems:` fires when you
+> *pick a recipient*, not when the file lands — so exiting there kills the process mid-handoff. The
+> symptom is precise and misleading: the picker opens, you click a person, the window closes, and
+> nothing is sent. The script instead simply outlives the transfer (900s, idle and invisible), and
+> each new invocation kills the previous helper by recorded PID.
+>
+> The PID is recorded rather than matched because the wrapper shell's own command line contains the
+> string `airdrop-send.applescript` — `pkill -f` on that pattern kills the wrapper before it ever
+> reaches `osascript`.
 
 ## Tunables (env vars)
 - `AIRDROP_BATCH_GAP` — seconds between files that still count as one batch (default `120`).
