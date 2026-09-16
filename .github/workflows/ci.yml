@@ -1,0 +1,28 @@
+name: CI
+
+# Useful with zero tests: compiles every file and imports every module, which
+# catches a syntax error or a broken import before it reaches production.
+# Gets stronger as tests appear — it runs them automatically once they exist.
+on:
+  push: { branches: [main, master] }
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every shell script parses
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "::error file=$f::bash -n failed"; fail=1; }
+          done < <(find . -name '*.sh' -not -path './.git/*')
+          exit $fail
+
+      - name: shellcheck (errors only)
+        run: |
+          shellcheck --version >/dev/null 2>&1 || sudo apt-get install -y shellcheck
+          find . -name '*.sh' -not -path './.git/*' -print0 \
+            | xargs -0 shellcheck --severity=error
