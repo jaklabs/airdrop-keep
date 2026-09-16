@@ -31,6 +31,38 @@ Pin `~/AirDrop Keep` to your Finder sidebar → **one click shows every AirDrop 
 ```
 The watcher is a `launchd` **WatchPaths** agent on `~/Downloads` — fires only when the folder changes.
 
+## Sending: right-click → AirDrop
+
+The other half of the papercut. macOS can already send via right-click → **Share → AirDrop**, but
+it is buried one level down and you cannot put a keyboard shortcut on it.
+
+```bash
+./install-quick-action.sh              # adds an "AirDrop" Quick Action to the Finder menu
+./install-quick-action.sh --uninstall  # remove it
+```
+
+Then right-click any file or folder (or a multi-selection) → **Quick Actions → AirDrop**, and the
+picker opens with everything already loaded.
+
+The part worth doing: give it a **keyboard shortcut** in *System Settings → Keyboard → Keyboard
+Shortcuts… → Services → General → AirDrop*. That is something the built-in Share menu cannot do,
+and it turns sending into one keystroke.
+
+Run the installer on each Mac you want it on — it compiles nothing and has no dependencies.
+
+**How it works.** A small Automator `.workflow` in `~/Library/Services/` passes the selected paths
+to `airdrop-send.applescript`, which asks `NSSharingService` for `com.apple.share.AirDrop.send`.
+The panel belongs to the calling process and dies with it, so the script pumps the run loop to hold
+it open and exits the moment the share completes.
+
+> ⚠️ **A cancelled share cannot call back.** The delegate selector is
+> `sharingService:didFailToShareItems:error:`, and `error` is a reserved word in AppleScript that
+> cannot appear as a handler label — so cancellation is invisible to the script. It falls back to a
+> 150-second timeout (idle and invisible), and each new invocation kills the previous helper via a
+> pidfile, so at most one is ever waiting. The pidfile is not paranoia: the wrapper shell's own
+> command line contains the string `airdrop-send.applescript`, so a `pkill -f` on that pattern
+> would kill the wrapper before it ever reached `osascript`.
+
 ## Tunables (env vars)
 - `AIRDROP_BATCH_GAP` — seconds between files that still count as one batch (default `120`).
 - `AIRDROP_SRC` / `AIRDROP_KEEP` — override source (`~/Downloads`) and destination (`~/AirDrop Keep`).

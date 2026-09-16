@@ -12,6 +12,17 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
 (originals stay in `~/Downloads`) and **idempotent** (state in `~/.airdrop-keep/seen.txt`).
 
 ## Files
+- `airdrop-send.applescript` — the SEND side (added 2026-09-16): opens the AirDrop picker
+  preloaded with the given paths, via `NSSharingService` `com.apple.share.AirDrop.send`.
+  ⚠️ Three AppleScript reserved words bite here and cost several compile cycles: `error` cannot be
+  a handler label (so the cancel delegate is impossible), `items` cannot be a formal parameter, and
+  `if X then A else B` needs block form. Keep `osacompile -o /dev/null` in the installer — it
+  refuses to install an action that does not compile.
+  ⚠️ It pumps `NSRunLoop` rather than calling `delay`: the AirDrop panel belongs to this process and
+  dies with it, and delegate callbacks only fire while the loop runs.
+- `install-quick-action.sh` — builds + installs the Finder Quick Action to `~/Library/Services/`.
+  Run it per machine. `--uninstall` removes it. Verifies the bundle after writing it and deletes a
+  malformed one rather than leaving a menu item that silently does nothing.
 - `airdrop-keep.sh` — the engine. `--open` (open newest batch), `--open-keep` (open the folder).
 - `install.sh` — first pass + clickable launcher + optional sidebar pin (`mysides`).
 - `enable-watcher.sh` / `disable-watcher.sh` — toggle the `launchd` WatchPaths agent on `~/Downloads`.
