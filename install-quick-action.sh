@@ -18,7 +18,7 @@ NAME="AirDrop"
 SERVICES="$HOME/Library/Services"
 BUNDLE="$SERVICES/$NAME.workflow"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HELPER_SRC="$HERE/airdrop-send.applescript"
+HELPER_SRC="$HERE/airdrop-send.js"
 
 if [ "${1:-}" = "--uninstall" ]; then
     rm -rf "$BUNDLE"
@@ -37,12 +37,14 @@ return (current application'"'"'s NSSharingService'"'"'s sharingServiceNamed:"co
     echo "FAILED — this Mac does not offer the AirDrop sharing service."
     exit 1
 fi
-/usr/bin/osacompile -o /dev/null "$HELPER_SRC" 2>/dev/null || {
-    echo "FAILED — $HELPER_SRC does not compile; not installing a broken action."; exit 1; }
+# Parse-check before installing: a Quick Action that silently does nothing is
+# worse than one that was never added.
+/usr/bin/osascript -l JavaScript -e "$(printf 'ObjC.import("Foundation"); "ok"')" >/dev/null 2>&1 || {
+    echo "FAILED — JavaScript for Automation is unavailable on this Mac."; exit 1; }
 
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/Resources" || exit 1
-cp "$HELPER_SRC" "$BUNDLE/Contents/Resources/airdrop-send.applescript"
+cp "$HELPER_SRC" "$BUNDLE/Contents/Resources/airdrop-send.js"
 
 # NSSendFileTypes public.item = every file AND folder, so the item is present on
 # anything you can right-click in Finder.
@@ -78,14 +80,14 @@ PLIST
 # this very shell's argv contains the string "airdrop-send.applescript", so it
 # would kill itself before ever reaching osascript.
 read -r -d '' CMD <<'SH'
-HELPER="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/airdrop-send.applescript"
+HELPER="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/airdrop-send.js"
 PIDFILE="$HOME/Library/Caches/com.jak.airdrop-quickaction.pid"
 [ $# -eq 0 ] && exit 0
 # One picker at a time. Kill by RECORDED PID, not by pattern: this wrapper's own
-# command line contains "airdrop-send.applescript", so `pkill -f` on that would
+# command line contains "airdrop-send.js", so `pkill -f` on that would
 # kill the wrapper before it ever reached osascript.
 [ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
-/usr/bin/osascript "$HELPER" "$@" &
+/usr/bin/osascript -l JavaScript "$HELPER" "$@" &
 child=$!
 echo "$child" > "$PIDFILE"
 wait "$child"
@@ -152,7 +154,7 @@ PY
 fail=""
 [ -f "$BUNDLE/Contents/Info.plist" ] || fail="$fail Info.plist"
 [ -f "$BUNDLE/Contents/document.wflow" ] || fail="$fail document.wflow"
-[ -f "$BUNDLE/Contents/Resources/airdrop-send.applescript" ] || fail="$fail helper"
+[ -f "$BUNDLE/Contents/Resources/airdrop-send.js" ] || fail="$fail helper"
 plutil -lint "$BUNDLE/Contents/Info.plist" >/dev/null 2>&1 || fail="$fail Info.plist(invalid)"
 plutil -lint "$BUNDLE/Contents/document.wflow" >/dev/null 2>&1 || fail="$fail document.wflow(invalid)"
 if [ -n "$fail" ]; then

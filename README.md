@@ -51,7 +51,7 @@ and it turns sending into one keystroke.
 Run the installer on each Mac you want it on — it compiles nothing and has no dependencies.
 
 **How it works.** A small Automator `.workflow` in `~/Library/Services/` passes the selected paths
-to `airdrop-send.applescript`, which asks `NSSharingService` for `com.apple.share.AirDrop.send` and
+to `airdrop-send.js` (run under `osascript -l JavaScript`), which asks `NSSharingService` for `com.apple.share.AirDrop.send` and
 then pumps the run loop, because the picker belongs to the calling process and dies with it.
 
 > ⚠️ **Three "improvements" break it, and each one looks right.** On macOS 26.5.1, the picker fails
@@ -67,8 +67,12 @@ then pumps the run loop, because the picker belongs to the calling process and d
 > each new invocation kills the previous helper by recorded PID.
 >
 > The PID is recorded rather than matched because the wrapper shell's own command line contains the
-> string `airdrop-send.applescript` — `pkill -f` on that pattern kills the wrapper before it ever
-> reaches `osascript`.
+> string `airdrop-send.js` — `pkill -f` on that pattern kills the wrapper before it ever reaches
+> `osascript`.
+>
+> **Troubleshooting:** every run appends to `~/Library/Caches/airdrop-send.log`, including the
+> failure reason from `sharingService:didFailToShareItems:error:`. That callback is why the helper
+> is JavaScript and not AppleScript, which cannot implement it.
 
 ## Tunables (env vars)
 - `AIRDROP_BATCH_GAP` — seconds between files that still count as one batch (default `120`).

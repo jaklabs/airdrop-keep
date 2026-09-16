@@ -12,22 +12,24 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
 (originals stay in `~/Downloads`) and **idempotent** (state in `~/.airdrop-keep/seen.txt`).
 
 ## Files
-- `airdrop-send.applescript` — the SEND side (added 2026-09-16): opens the AirDrop picker
-  preloaded with the given paths, via `NSSharingService` `com.apple.share.AirDrop.send`.
-  ⚠️⚠️ **Three changes each stop the picker appearing, and all three look like fixes.** Verified by
-  screenshot both ways on macOS 26.5.1: (1) `setActivationPolicy:`/`activateIgnoringOtherApps:`,
-  (2) compiling it into an `.app` — droplet OR stay-open applet; `on open` runs and
-  `performWithItems:` returns, but nothing is drawn, and (3) a completion delegate.
-  **Plain `osascript`, no activation, pumped `NSRunLoop`, no delegate — that exact shape.**
-  ⚠️ The delegate one shipped and was the reported bug: `sharingService:didShareItems:` fires when
-  the user **picks a recipient**, not when the file lands, so exiting there killed the process
-  mid-handoff — picker opens, click closes it, nothing sent. There is no delegate now; it just
-  outlives the transfer (900s) and the wrapper kills the previous helper by recorded PID.
-  ⚠️ It pumps `NSRunLoop` rather than calling `delay`: the picker belongs to this process and dies
-  with it, and `delay` does not reliably run the loop.
-  ⚠️ AppleScript reserved words cost several compile cycles: `error` cannot be a handler label,
-  `items` cannot be a formal parameter, `if X then A else B` needs block form. `osacompile -o
-  /dev/null` stays in the installer so a non-compiling helper is never installed.
+- `airdrop-send.js` — the SEND side (added 2026-09-16): opens the AirDrop picker preloaded with the
+  given paths, via `NSSharingService` `NSSharingServiceNameSendViaAirDrop`. Run with
+  `osascript -l JavaScript`.
+  ⚠️ **It is JavaScript because AppleScript is structurally blind to failures here.** The service
+  reports why a send failed through `sharingService:didFailToShareItems:error:`, and AppleScript
+  cannot implement that selector at all — `error` is a reserved word and may not be a handler label.
+  The first two versions were AppleScript, and both times a broken send produced *no* diagnostic and
+  an hour of guessing. JXA registers a real delegate subclass and writes the domain/code/message to
+  `~/Library/Caches/airdrop-send.log`. **Read that log before theorising.**
+  ⚠️⚠️ **Two changes each stop the picker being drawn, and both look like fixes.** Verified by
+  screenshot both ways on macOS 26.5.1: (1) `setActivationPolicy:`/`activateIgnoringOtherApps:`, and
+  (2) compiling the helper into an `.app` — droplet OR stay-open applet; `on open` runs and
+  `performWithItems:` returns, but nothing appears. Plain `osascript`, no activation, pumped
+  `NSRunLoop`.
+  ⚠️ No early exit on `didShareItems:` — that callback fires when the recipient is **picked**, not
+  when the file lands, and quitting there kills the process mid-handoff.
+  ⚠️ The delegate is held weakly by the service; keep the strong reference or callbacks stop
+  arriving silently.
 - `install-quick-action.sh` — builds + installs the Finder Quick Action to `~/Library/Services/`.
   Run it per machine. `--uninstall` removes it. Verifies the bundle after writing it and deletes a
   malformed one rather than leaving a menu item that silently does nothing.
