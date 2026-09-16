@@ -26,3 +26,14 @@ jobs:
           shellcheck --version >/dev/null 2>&1 || sudo apt-get install -y shellcheck
           find . -name '*.sh' -not -path './.git/*' -print0 \
             | xargs -0 shellcheck --severity=error
+
+  # The Linux job above cannot exercise any of this: the receive side reads macOS
+  # quarantine xattrs, and the send side needs swiftc, plutil and the Automator
+  # bundle layout. Without this job the send-side tests would sit green and
+  # unrun, which is the failure mode the tests exist to prevent.
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: ./tests/test_airdrop.sh

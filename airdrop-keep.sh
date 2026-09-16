@@ -21,7 +21,10 @@ set -euo pipefail
 SRC="${AIRDROP_SRC:-$HOME/Downloads}"
 KEEP="${AIRDROP_KEEP:-$HOME/AirDrop Keep}"
 GAP="${AIRDROP_BATCH_GAP:-120}"
-STATE="$HOME/.airdrop-keep"; SEEN="$STATE/seen.txt"
+# AIRDROP_STATE is overridable so the test suite can run against a scratch
+# state file instead of the real one. A test that has to touch ~/.airdrop-keep
+# to run is a test nobody runs twice.
+STATE="${AIRDROP_STATE:-$HOME/.airdrop-keep}"; SEEN="$STATE/seen.txt"
 mkdir -p "$KEEP" "$STATE"; touch "$SEEN"
 
 open_keep() { open "$KEEP"; }

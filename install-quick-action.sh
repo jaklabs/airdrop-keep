@@ -15,7 +15,9 @@
 set -uo pipefail
 
 NAME="AirDrop"
-SERVICES="$HOME/Library/Services"
+# Overridable so the tests can install into a scratch dir rather than the
+# user's live Services folder.
+SERVICES="${AIRDROP_SERVICES_DIR:-$HOME/Library/Services}"
 BUNDLE="$SERVICES/$NAME.workflow"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER_SRC="$HERE/AirDropSend.swift"
@@ -105,7 +107,7 @@ PLIST
 # this very shell's argv contains the string "airdrop-send.applescript", so it
 # would kill itself before ever reaching osascript.
 read -r -d '' CMD <<'SH'
-APP="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/AirDropSend.app"
+APP="__APPPATH__"
 [ $# -eq 0 ] && exit 0
 # One picker at a time. pkill -x matches the process NAME (AirDropSend), which
 # this wrapper shell is not -- so it cannot kill itself the way a `pkill -f` on
@@ -114,6 +116,7 @@ APP="$HOME/Library/Services/AirDrop.workflow/Contents/Resources/AirDropSend.app"
 exec /usr/bin/open -a "$APP" --args "$@"
 SH
 
+CMD="${CMD//__APPPATH__/$BUNDLE/Contents/Resources/AirDropSend.app}"
 CMD="$CMD" python3 - "$BUNDLE/Contents/document.wflow" <<'PY'
 import os, plistlib, sys, uuid
 out = sys.argv[1]
