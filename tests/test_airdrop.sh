@@ -93,6 +93,88 @@ else
 fi
 
 echo
+echo "=== messages-keep: moving locally-saved media out of Downloads ==="
+
+if [ "$IS_MAC" = "1" ]; then
+  MK() { MESSAGES_SRC="$TMP/mdl" MESSAGES_KEEP="$TMP/mkeep" MESSAGES_STATE="$TMP/mstate" \
+           bash "$HERE/messages-keep.sh" "$@" 2>&1; }
+  mreset() { rm -rf "$TMP/mdl" "$TMP/mkeep" "$TMP/mstate"; mkdir -p "$TMP/mdl"; }
+
+  # A dry run must be a genuine no-op. This tool MOVES files; if the default
+  # ever stops being safe, it is the kind of mistake you notice too late.
+  mreset
+  printf 'x' > "$TMP/mdl/IMG_1.jpg"
+  MK >/dev/null
+  if [ -f "$TMP/mdl/IMG_1.jpg" ] && [ ! -d "$TMP/mkeep" ]; then
+    ok "dry run moves nothing and creates nothing"
+  else
+    no "dry run moves nothing and creates nothing" "the default run had side effects"
+  fi
+
+  mreset
+  printf 'x' > "$TMP/mdl/IMG_1.jpg"
+  MK --commit >/dev/null
+  if [ ! -f "$TMP/mdl/IMG_1.jpg" ] && [ -n "$(find "$TMP/mkeep" -name 'IMG_1.jpg' 2>/dev/null)" ]; then
+    ok "--commit moves an untagged image out of Downloads"
+  else
+    no "--commit moves an untagged image out of Downloads"
+  fi
+
+  # The whole discrimination: anything with a KNOWN origin is not yours-from-Messages.
+  mreset
+  printf 'x' > "$TMP/mdl/airdropped.jpg"
+  xattr -w com.apple.quarantine "0081;68c00000;sharingd;" "$TMP/mdl/airdropped.jpg" 2>/dev/null
+  printf 'x' > "$TMP/mdl/downloaded.jpg"
+  xattr -w com.apple.quarantine "0081;68c00000;Chrome;" "$TMP/mdl/downloaded.jpg" 2>/dev/null
+  MK --commit >/dev/null
+  if [ -f "$TMP/mdl/airdropped.jpg" ] && [ -f "$TMP/mdl/downloaded.jpg" ]; then
+    ok "AirDrop and browser files are left alone"
+  else
+    no "AirDrop and browser files are left alone" "a file with a known source was moved"
+  fi
+
+  mreset
+  printf 'x' > "$TMP/mdl/notes.pdf"; printf 'x' > "$TMP/mdl/archive.zip"
+  MK --commit >/dev/null
+  if [ -f "$TMP/mdl/notes.pdf" ] && [ -f "$TMP/mdl/archive.zip" ]; then
+    ok "non-media files are left alone"
+  else
+    no "non-media files are left alone"
+  fi
+
+  # Reversibility is what makes moving acceptable at all.
+  mreset
+  printf 'abc' > "$TMP/mdl/IMG_9.jpg"
+  before="$(cksum < "$TMP/mdl/IMG_9.jpg")"
+  MK --commit >/dev/null
+  MK --undo >/dev/null
+  if [ -f "$TMP/mdl/IMG_9.jpg" ] && [ "$(cksum < "$TMP/mdl/IMG_9.jpg")" = "$before" ]; then
+    ok "--undo puts the file back, byte-identical"
+  else
+    no "--undo puts the file back, byte-identical" "undo did not restore the original"
+  fi
+
+  # Two real files can share a name. Overwriting one would destroy a photo.
+  mreset
+  mkdir -p "$TMP/mkeep"
+  printf 'first' > "$TMP/mdl/IMG_5.jpg"
+  MK --commit >/dev/null
+  printf 'second' > "$TMP/mdl/IMG_5.jpg"
+  MK --commit >/dev/null
+  check "$(find "$TMP/mkeep" -name 'IMG_5*.jpg' | wc -l | tr -d ' ')" "2" \
+        "a same-named second file is kept, not overwritten"
+
+  # Nothing is ever destroyed: every input is still somewhere afterwards.
+  mreset
+  for i in 1 2 3; do printf 'x%s' "$i" > "$TMP/mdl/IMG_c$i.jpg"; done
+  MK --commit >/dev/null
+  total=$(( $(find "$TMP/mdl" -type f | wc -l) + $(find "$TMP/mkeep" -type f 2>/dev/null | wc -l) ))
+  check "$(printf '%s' "$total" | tr -d ' ')" "3" "no file is lost or deleted by a move"
+else
+  skip "messages-keep tests" "needs macOS xattr"
+fi
+
+echo
 echo "=== send side: the Quick Action ==="
 
 SWIFT="$HERE/AirDropSend.swift"

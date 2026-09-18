@@ -72,6 +72,33 @@ that is not pure bash.
 > prompt, because the app is launched by LaunchServices with no inherited file access. Allow it once
 > per folder. Until then `canPerform` is `false` and nothing will send.
 
+## Pictures you save out of Messages
+
+Messages has no "save attachments here" preference, so everything you save lands in `~/Downloads`
+with everything else. `messages-keep.sh` pulls those back out into dated folders.
+
+```bash
+./messages-keep.sh            # DRY RUN — lists what would move, touches nothing
+./messages-keep.sh --commit   # actually move them
+./messages-keep.sh --undo     # reverse the last committed run
+```
+
+**How it tells them apart.** AirDrop files carry the quarantine agent `sharingd`; browser downloads
+carry `Chrome`/`Safari` plus `kMDItemWhereFroms`; Preview exports carry `Preview`. A file saved out
+of Messages carries **none of these**, because it is a local copy of something macOS already trusts.
+So the signal is *negative space*: media with no origin tag did not arrive over the network.
+
+> ⚠️ **That is a heuristic, not a proof** — unlike the receive side, which has a real signal. It
+> means "locally saved", and Messages is overwhelmingly how that happens, but a hand-copied photo
+> looks identical. It is deliberately conservative: anything with **any** known origin is left
+> alone. On a real 1,232-file Downloads folder it selected 14 and ignored 902.
+>
+> For proof instead of inference you need Full Disk Access and a lookup against
+> `~/Library/Messages/chat.db`, which knows every attachment's real filename. That is a bigger
+> permission than this feature is worth for most people, so it is not the default.
+
+**It never deletes.** Files are moved, every move is recorded, and `--undo` puts the last run back.
+
 ## Tunables (env vars)
 - `AIRDROP_BATCH_GAP` — seconds between files that still count as one batch (default `120`).
 - `AIRDROP_SRC` / `AIRDROP_KEEP` — override source (`~/Downloads`) and destination (`~/AirDrop Keep`).

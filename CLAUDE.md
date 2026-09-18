@@ -33,6 +33,16 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
   Run it per machine. `--uninstall` removes it. Verifies the bundle after writing it and deletes a
   malformed one rather than leaving a menu item that silently does nothing.
 - `airdrop-keep.sh` — the engine. `--open` (open newest batch), `--open-keep` (open the folder).
+- `messages-keep.sh` — moves locally-saved media (what you save out of Messages) from `~/Downloads`
+  into `~/Messages Media/<date>/`. **Dry-run by default**; `--commit` applies, `--undo` reverses the
+  last run from an append-only ledger in `~/.messages-keep/moves.tsv`.
+  ⚠️ Unlike the receive side, this has **no positive signal** — Messages leaves no quarantine agent
+  and no `kMDItemWhereFroms`, so identification is the ABSENCE of any known origin. It is a
+  heuristic and the code says so; keep it conservative (anything with a known source is skipped)
+  rather than trying to widen the catch. Proof would need Full Disk Access + `chat.db`.
+  ⚠️ It MOVES files, which is the one destructive-shaped thing in this repo. That is why the default
+  is a dry run, why nothing is ever deleted, and why every move is ledgered. Do not "simplify" any
+  of those three away.
 - `install.sh` — first pass + clickable launcher + optional sidebar pin (`mysides`).
 - `enable-watcher.sh` / `disable-watcher.sh` — toggle the `launchd` WatchPaths agent on `~/Downloads`.
 - `com.jak.airdrop-keep.plist` — the agent template (`__SCRIPT__/__DOWNLOADS__/__STATE__` filled at enable).
