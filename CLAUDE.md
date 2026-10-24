@@ -39,9 +39,17 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
   ⚠️ `ditto --keepParent` is right for a FOLDER and wrong for a FILE (it wraps the file in its parent
   folder's name) — caught by testing, now a test. The script is `.zsh`, not `.sh`, because CI's
   shellcheck cannot parse zsh. `tests/test_compress.sh` runs the exact script Finder runs.
-- `install-compress-droplet.sh` — the same thing as a **drag-and-drop app** (`~/Applications/Compress to
-  Zip.app`, an AppleScript droplet with the tested `.zsh` copied inside, Archive Utility's icon). Drop
-  files on it in the Dock. Verified by `open -a` (the same Apple Event a drop sends).
+- `install-compress-app.sh` + `CompressToZipApp.swift` + `CompressCore.swift` — the **Compress to Zip
+  app** (2026-10-24): a window you drop files into (or click to choose); it zips them into a private
+  temp folder, then **Download** moves the zip to ~/Downloads (never overwriting) and shows it in
+  Finder; **Save As…** picks a place. Dropping on the Dock icon works too (`--dock` adds it).
+  `--headless` runs the same path with no window; the tests drive it.
+  ⚠️ **Download is click-only.** With Return bound to it, a Return typed elsewhere while the window
+  came forward saved a zip unasked (seen once in testing).
+  ⚠️ **Zips are CLEAN** (`ditto --norsrc --noextattr --noqtn --noacl`): Finder's own Compress adds a
+  `__MACOSX/` folder for any file with Mac metadata, which Windows users see as junk.
+  ⚠️ Finder can select the wrong item right after a move into an already-open window, so the reveal
+  is asked twice, 0.6s apart.
 - `airdrop-keep.sh` — the engine. `--open` (open newest batch), `--open-keep` (open the folder).
 - `messages-keep.sh` — moves locally-saved media (what you save out of Messages) from `~/Downloads`
   into `~/Messages Media/<date>/`. **Dry-run by default**; `--commit` applies, `--undo` reverses the

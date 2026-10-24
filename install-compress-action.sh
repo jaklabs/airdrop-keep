@@ -10,8 +10,8 @@
 #
 # Same results as Finder's Compress: one item → "<name>.zip" next to it, several
 # → "Archive.zip"; an existing zip is never overwritten ("Archive 2.zip"...).
-# Uses /usr/bin/ditto, the tool Finder itself uses, so Mac metadata and
-# permissions survive and nothing lands in a __MACOSX folder.
+# Uses /usr/bin/ditto (the tool Finder uses) set to write CLEAN zips: no
+# __MACOSX folder or ._ files, so they open tidily on Windows too.
 #
 #   ./install-compress-action.sh              install (or update)
 #   ./install-compress-action.sh --uninstall  remove it
