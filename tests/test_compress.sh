@@ -45,5 +45,14 @@ plutil -lint "$B/Info.plist" >/dev/null && plutil -lint "$B/document.wflow" >/de
 plutil -convert xml1 -o - "$B/document.wflow" | grep -q "ditto -c -k" \
   && ok "the installed action runs the tested script" || no "installed action runs the tested script" "script not embedded"
 
+COMPRESS_APP_DIR="$TMP/Apps" bash "$HERE/install-compress-droplet.sh" >/dev/null
+A="$TMP/Apps/Compress to Zip.app/Contents"
+cmp -s "$A/Resources/compress-to-zip.zsh" "$HERE/compress-to-zip.zsh" \
+  && ok "the drag-and-drop app carries the same tested script" || no "droplet carries the tested script" "missing or different"
+plutil -lint "$A/Info.plist" >/dev/null && [ -f "$A/Resources/Scripts/main.scpt" ] \
+  && ok "the drag-and-drop app is a valid compiled droplet" || no "droplet is valid" "Info.plist or main.scpt missing"
+osadecompile "$A/Resources/Scripts/main.scpt" 2>/dev/null | grep -q "on open droppedItems" \
+  && ok "the app handles dropped files (on open)" || no "droplet handles drops" "no open handler"
+
 echo; printf '  %d passed, %d failed\n\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

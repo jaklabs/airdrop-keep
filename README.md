@@ -127,3 +127,6 @@ Filing it with a clean, reproducible writeup (and a link to this tool as the pro
 Select files in Finder and press **⌃⌥⌘Z** (Control-Option-Command-Z). One item becomes `<name>.zip`,
 several become `Archive.zip`, and an existing zip is never overwritten. It is also in right-click →
 Quick Actions → Compress to Zip. `--uninstall` removes it.
+
+Prefer drag and drop? `./install-compress-droplet.sh` puts a **Compress to Zip** app in
+`~/Applications`. Drag it into your Dock and drop files or folders on it.

@@ -39,6 +39,9 @@ transfer share it. `airdrop-keep.sh` filters on `sharingd`, groups by that times
   ⚠️ `ditto --keepParent` is right for a FOLDER and wrong for a FILE (it wraps the file in its parent
   folder's name) — caught by testing, now a test. The script is `.zsh`, not `.sh`, because CI's
   shellcheck cannot parse zsh. `tests/test_compress.sh` runs the exact script Finder runs.
+- `install-compress-droplet.sh` — the same thing as a **drag-and-drop app** (`~/Applications/Compress to
+  Zip.app`, an AppleScript droplet with the tested `.zsh` copied inside, Archive Utility's icon). Drop
+  files on it in the Dock. Verified by `open -a` (the same Apple Event a drop sends).
 - `airdrop-keep.sh` — the engine. `--open` (open newest batch), `--open-keep` (open the folder).
 - `messages-keep.sh` — moves locally-saved media (what you save out of Messages) from `~/Downloads`
   into `~/Messages Media/<date>/`. **Dry-run by default**; `--commit` applies, `--undo` reverses the
