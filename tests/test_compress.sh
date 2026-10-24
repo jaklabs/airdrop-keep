@@ -18,7 +18,7 @@ got=$(zipinfo -1 "$W/report one.pdf.zip" 2>&1)
 [ "$got" = "report one.pdf" ] && ok "one file → <name>.zip holding just that file" || no "one file → <name>.zip holding just that file" "$got"
 
 run "$W/My Folder"
-got=$(zipinfo -1 "$W/My Folder.zip" 2>&1 | sort | tr '\n' '|')
+got=$(zipinfo -1 "$W/My Folder.zip" 2>&1 | LC_ALL=C sort | tr '\n' '|')
 [ "$got" = "My Folder/|My Folder/a.txt|My Folder/sub/|My Folder/sub/b.txt|" ] && ok "a folder unzips as that folder" || no "a folder unzips as that folder" "$got"
 
 run "$W/report one.pdf"
@@ -26,7 +26,7 @@ run "$W/report one.pdf"
   && ok "an existing zip is never overwritten (→ '… 2.zip')" || no "an existing zip is never overwritten" "$(ls "$W")"
 
 run "$W/report one.pdf" "$W/c.txt" "$W/My Folder"
-got=$(zipinfo -1 "$W/Archive.zip" 2>&1 | sort | tr '\n' '|')
+got=$(zipinfo -1 "$W/Archive.zip" 2>&1 | LC_ALL=C sort | tr '\n' '|')
 [ "$got" = "My Folder/|My Folder/a.txt|My Folder/sub/|My Folder/sub/b.txt|c.txt|report one.pdf|" ] && ok "several items → Archive.zip with each item at the top" || no "several items → Archive.zip" "$got"
 
 X="$TMP/x"; mkdir "$X"; (cd "$X" && unzip -q "$W/Archive.zip")
