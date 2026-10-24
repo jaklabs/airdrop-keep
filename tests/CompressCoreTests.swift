@@ -10,7 +10,8 @@ func check(_ name: String, _ ok: Bool, _ detail: @autoclosure () -> String = "")
 let fm = FileManager.default
 let root = fm.temporaryDirectory.appendingPathComponent("cz-tests-\(UUID().uuidString)")
 try! fm.createDirectory(at: root, withIntermediateDirectories: true)
-defer { try? fm.removeItem(at: root) }
+// No `defer` here: top-level defer never runs because exit() ends the process first,
+// which is how earlier runs left test zips behind in $TMPDIR. Cleanup is explicit below.
 let script = URL(fileURLWithPath: CommandLine.arguments[1])  // compress-to-zip.zsh
 func write(_ name: String, _ text: String, in dir: URL = root) -> URL {
     let u = dir.appendingPathComponent(name)
@@ -77,5 +78,7 @@ catch { check("a script that claims success but made no zip is a FAILURE", true)
 do { _ = try CompressCore.compress([root.appendingPathComponent("does-not-exist.txt")], script: script); check("a missing input is an error", false) }
 catch { check("a missing input is an error", true) }
 
+try? fm.removeItem(at: root)
+check("the tests leave no files behind", !fm.fileExists(atPath: root.path))
 print("\n  \(passed) passed, \(failed) failed\n")
 exit(failed == 0 ? 0 : 1)
