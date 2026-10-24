@@ -117,3 +117,13 @@ This tool is a workaround for a real gap. The underlying **feature request worth
 > **Steps to reproduce the pain:** Receive several AirDrop batches over a week → try to reopen a specific earlier batch → notice there is no grouped history; files are intermixed in Downloads by name, not by transfer.
 
 Filing it with a clean, reproducible writeup (and a link to this tool as the proof-of-concept) is exactly the kind of thing that gets engineer attention. This repo is that proof-of-concept.
+
+## Bonus: compress with a keyboard shortcut
+
+```bash
+./install-compress-action.sh
+```
+
+Select files in Finder and press **⌃⌥⌘Z** (Control-Option-Command-Z). One item becomes `<name>.zip`,
+several become `Archive.zip`, and an existing zip is never overwritten. It is also in right-click →
+Quick Actions → Compress to Zip. `--uninstall` removes it.

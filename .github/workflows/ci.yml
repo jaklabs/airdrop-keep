@@ -36,4 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tests
-        run: ./tests/test_airdrop.sh
+        run: |
+          ./tests/test_airdrop.sh
+          ./tests/test_compress.sh
